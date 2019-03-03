@@ -5,9 +5,9 @@ from keras.models import Model
 from keras.optimizers import Adam
 from keras.regularizers import l2
 
-from rgcn.layers.graph import GraphConvolution
-from rgcn.layers.input_adj import InputAdj
-from rgcn.utils import *
+from layers.graph import GraphConvolution
+from layers.input_adj import InputAdj
+from utils import *
 
 import pickle as pkl
 
@@ -15,6 +15,7 @@ import os
 import sys
 import time
 import argparse
+import pdb
 
 np.random.seed()
 
@@ -55,7 +56,7 @@ DO = args['dropout']
 dirname = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 with open(dirname + '/' + DATASET + '.pickle', 'rb') as f:
-    data = pkl.load(f)
+  data = pkl.load(f)
 
 A = data['A']
 y = data['y']
@@ -77,15 +78,16 @@ X = sp.csr_matrix(A[0].shape)
 
 # Normalize adjacency matrices individually
 for i in range(len(A)):
-    d = np.array(A[i].sum(1)).flatten()
-    d_inv = 1. / d
-    d_inv[np.isinf(d_inv)] = 0.
-    D_inv = sp.diags(d_inv)
-    A[i] = D_inv.dot(A[i]).tocsr()
+  d = np.array(A[i].sum(1)).flatten()
+  d_inv = 1. / d
+  d_inv[np.isinf(d_inv)] = 0.
+  D_inv = sp.diags(d_inv)
+  A[i] = D_inv.dot(A[i]).tocsr()
 
 A_in = [InputAdj(sparse=True) for _ in range(support)]
 X_in = Input(shape=(X.shape[1],), sparse=True)
 
+pdb.set_trace()
 # Define model architecture
 H = GraphConvolution(HIDDEN, support, num_bases=BASES, featureless=True,
                      activation='relu',
@@ -97,38 +99,38 @@ Y = GraphConvolution(y_train.shape[1], support, num_bases=BASES,
 # Compile model
 model = Model(input=[X_in] + A_in, output=Y)
 model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=LR))
-
+pdb.set_trace()
 preds = None
 
 # Fit
 for epoch in range(1, NB_EPOCH + 1):
 
-    # Log wall-clock time
-    t = time.time()
+  # Log wall-clock time
+  t = time.time()
 
-    # Single training iteration
-    model.fit([X] + A, y_train, sample_weight=train_mask,
-              batch_size=num_nodes, nb_epoch=1, shuffle=False, verbose=0)
+  # Single training iteration
+  model.fit([X] + A, y_train, sample_weight=train_mask,
+            batch_size=num_nodes, nb_epoch=1, shuffle=False, verbose=0)
 
-    if epoch % 1 == 0:
+  if epoch % 1 == 0:
 
-        # Predict on full dataset
-        preds = model.predict([X] + A, batch_size=num_nodes)
+    # Predict on full dataset
+    preds = model.predict([X] + A, batch_size=num_nodes)
 
-        # Train / validation scores
-        train_val_loss, train_val_acc = evaluate_preds(preds, [y_train, y_val],
-                                                       [idx_train, idx_val])
+    # Train / validation scores
+    train_val_loss, train_val_acc = evaluate_preds(preds, [y_train, y_val],
+                                                   [idx_train, idx_val])
 
-        print("Epoch: {:04d}".format(epoch),
-              "train_loss= {:.4f}".format(train_val_loss[0]),
-              "train_acc= {:.4f}".format(train_val_acc[0]),
-              "val_loss= {:.4f}".format(train_val_loss[1]),
-              "val_acc= {:.4f}".format(train_val_acc[1]),
-              "time= {:.4f}".format(time.time() - t))
+    print("Epoch: {:04d}".format(epoch),
+          "train_loss= {:.4f}".format(train_val_loss[0]),
+          "train_acc= {:.4f}".format(train_val_acc[0]),
+          "val_loss= {:.4f}".format(train_val_loss[1]),
+          "val_acc= {:.4f}".format(train_val_acc[1]),
+          "time= {:.4f}".format(time.time() - t))
 
-    else:
-        print("Epoch: {:04d}".format(epoch),
-              "time= {:.4f}".format(time.time() - t))
+  else:
+    print("Epoch: {:04d}".format(epoch),
+          "time= {:.4f}".format(time.time() - t))
 
 # Testing
 test_loss, test_acc = evaluate_preds(preds, [y_test], [idx_test])

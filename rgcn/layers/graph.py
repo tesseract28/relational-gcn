@@ -6,6 +6,7 @@ from keras.engine import Layer
 from keras.layers import Dropout
 
 import keras.backend as K
+import pdb
 
 
 class GraphConvolution(Layer):
@@ -44,9 +45,10 @@ class GraphConvolution(Layer):
         return output_shape  # (batch_size, output_dim)
 
     def build(self, input_shapes):
+        pdb.set_trace()
         features_shape = input_shapes[0]
         if self.featureless:
-            self.num_nodes = features_shape[1]  # NOTE: Assumes featureless input (i.e. square identity mx)
+            self.num_nodes = features_shape[1]
         assert len(features_shape) == 2
         self.input_dim = features_shape[1]
 
@@ -79,6 +81,7 @@ class GraphConvolution(Layer):
             del self.initial_weights
 
     def call(self, inputs, mask=None):
+        pdb.set_trace()
         features = inputs[0]
         A = inputs[1:]  # list of basis functions
 
@@ -88,7 +91,7 @@ class GraphConvolution(Layer):
             if not self.featureless:
                 supports.append(K.dot(A[i], features))
             else:
-                supports.append(A[i])
+                supports.append(A[i])  # NOTE: Assumes featureless input (i.e. square identity mx)
         supports = K.concatenate(supports, axis=1)
 
         if self.num_bases > 0:
@@ -96,7 +99,7 @@ class GraphConvolution(Layer):
                                (self.num_bases, self.input_dim, self.output_dim))
             self.W = K.permute_dimensions(self.W, (1, 0, 2))
             V = K.dot(self.W_comp, self.W)
-            V = K.reshape(V, (self.support*self.input_dim, self.output_dim))
+            V = K.reshape(V, (self.support * self.input_dim, self.output_dim))
             output = K.dot(supports, V)
         else:
             output = K.dot(supports, self.W)
